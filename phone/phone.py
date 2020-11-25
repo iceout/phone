@@ -104,7 +104,10 @@ class Phone(object):
                                                    phone_type)
 
     def find(self, phone_num):
-        return self.text_to_loc(self._lookup_phone(phone_num))
+        phone_info = self._lookup_phone(phone_num)
+        if self.loaded_locid:
+            return self.text_to_loc(phone_info)
+        return phone_info
 
     def text_to_loc(self, phone_info):
         if phone_info:
@@ -113,7 +116,7 @@ class Phone(object):
             return phone_info
 
     def get_locid(self, loc_text):
-        if self.loaded_locid and loc_text in self.to_locid:
+        if loc_text in self.to_locid:
             return self.to_locid[loc_text]
         return DEFAULT_LOCID
 
