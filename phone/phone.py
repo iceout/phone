@@ -3,6 +3,7 @@
 import os
 import struct
 import sys
+import csv
 
 __author__ = 'lovedboy'
 
@@ -15,9 +16,11 @@ else:
         end_offset = buf.find('\x00', start_offset)
         return buf[start_offset:end_offset]
 
+DEFAULT_LOCID = '100000'
+
 
 class Phone(object):
-    def __init__(self, dat_file=None):
+    def __init__(self, dat_file=None, locid_map=None):
 
         if dat_file is None:
             dat_file = os.path.join(os.path.dirname(__file__), "phone.dat")
@@ -33,6 +36,11 @@ class Phone(object):
             self.head_fmt, self.buf[:self.head_fmt_length])
         self.phone_record_count = (len(
             self.buf) - self.first_phone_record_offset) // self.phone_fmt_length
+        if locid_map:
+            self._load_locid(locid_map)
+            self.loaded_locid = True
+        else:
+            self.loaded_locid = False
 
     def get_phone_dat_msg(self):
         print("版本号:{}".format(self.version))
@@ -78,7 +86,7 @@ class Phone(object):
         while left <= right:
             middle = (left + right) // 2
             current_offset = (self.first_phone_record_offset +
-                middle * self.phone_fmt_length)
+                              middle * self.phone_fmt_length)
             if current_offset >= buflen:
                 return
 
@@ -96,7 +104,23 @@ class Phone(object):
                                                    phone_type)
 
     def find(self, phone_num):
-        return self._lookup_phone(phone_num)
+        return self.text_to_loc(self._lookup_phone(phone_num))
+
+    def text_to_loc(self, phone_info):
+        if phone_info:
+            locid = self.get_locid((phone_info['province'], phone_info['city']))
+            phone_info['loc_id'] = locid
+            return phone_info
+
+    def get_locid(self, loc_text):
+        if self.loaded_locid and loc_text in self.to_locid:
+            return self.to_locid[loc_text]
+        return DEFAULT_LOCID
+
+    def _load_locid(self, mapping_path):
+        with open(mapping_path) as file_:
+            csvrd = csv.reader(file_)
+            self.to_locid = {tuple(line[1:]): line[0] for line in csvrd}
 
     @staticmethod
     def human_phone_info(phone_info):
